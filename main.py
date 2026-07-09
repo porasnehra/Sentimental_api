@@ -44,9 +44,7 @@ def read_root():
 
 @app.post("/index", status_code=status.HTTP_201_CREATED)
 def index_documents(payload: BatchDocumentInput):
-    """
-    Extracts text, generates vector embeddings, and indexes documents into FAISS.
-    """
+    
     global current_id
     if not payload.documents:
         raise HTTPException(status_code=400, detail="No documents provided.")
@@ -80,9 +78,7 @@ def index_documents(payload: BatchDocumentInput):
 
 @app.post("/search")
 def search_documents(payload: SearchQuery):
-    """
-    Performs a context-aware semantic search using the input query string.
-    """
+    
     if index.ntotal == 0:
         return {"query": payload.query, "results": [], "message": "Index is empty. Please upload documents first."}
 
@@ -117,9 +113,7 @@ def search_documents(payload: SearchQuery):
 
 @app.get("/status")
 def get_status():
-    """
-    Returns the total number of documents currently indexed.
-    """
+    
     return {
         "total_indexed_documents": index.ntotal,
         "embedding_dimension": embedding_dim
