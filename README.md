@@ -21,12 +21,12 @@ A local, natural-language document search backend built with **FastAPI**, **Sent
 ### Index Documents
 Paste raw text, tag it with source metadata, and submit it to the FAISS index.
 
-![Index Documents screenshot](screenshots/index-documents.jpg)
+![Index Documents screenshot](index-documents.jpg)
 
 ### Search Documents
 Enter a natural language query and get back the most semantically relevant document(s), ranked by distance score.
 
-![Search Documents screenshot](screenshots/search-documents.jpg)
+![Search Documents screenshot](search-documents.jpg)
 
 ---
 
