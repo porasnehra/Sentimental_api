@@ -7,7 +7,7 @@ st.title("🔍 Semantic Document Search")
 # Define the backend URL (You will update this after deploying the backend)
 BACKEND_URL = st.sidebar.text_input(
     "Backend API URL", 
-    value="http://127.0.0.1:8000"  # Default for local testing
+    value="https://sentimental-api-w3y9.onrender.com"  # Default for local testing
 )
 
 tabs = st.tabs(["Search Documents", "Index Documents", "System Status"])
