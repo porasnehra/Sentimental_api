@@ -11,22 +11,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 1. Initialize the Open-Source Embedding Model
-# 'all-MiniLM-L6-v2' is fast, lightweight, and perfect for local deployment.
-print("Loading local embedding model...")
+
 model = SentenceTransformer('all-MiniLM-L6-v2')
 embedding_dim = model.get_sentence_embedding_dimension()
 
-# 2. Initialize the FAISS Index for efficient vector similarity search
-# IndexFlatL2 uses Euclidean distance (L2), which works well with normalized embeddings.
+
 index = faiss.IndexFlatL2(embedding_dim)
 
-# In-memory document registry to map FAISS vector IDs back to actual document text
 document_registry: Dict[int, Dict[str, str]] = {}
 current_id = 0
 
 
-# --- Pydantic Schemas ---
+
 class DocumentInput(BaseModel):
     text: str
     metadata: Dict[str, str] = {}
@@ -39,7 +35,7 @@ class SearchQuery(BaseModel):
     top_k: int = 3
 
 
-# --- API Endpoints ---
+
 
 @app.get("/")
 def read_root():
@@ -57,16 +53,15 @@ def index_documents(payload: BatchDocumentInput):
 
     texts = [doc.text for doc in payload.documents]
     
-    # Generate embeddings locally using the NLP model
     embeddings = model.encode(texts, convert_to_numpy=True)
     
-    # FAISS requires float32 numpy arrays
+    
     embeddings = embeddings.astype('float32')
     
-    # Add vectors to the FAISS index
+    
     index.add(embeddings)
     
-    # Store text and metadata in our local registry mapped to the vector IDs
+    
     indexed_docs = []
     for doc in payload.documents:
         document_registry[current_id] = {
@@ -91,19 +86,18 @@ def search_documents(payload: SearchQuery):
     if index.ntotal == 0:
         return {"query": payload.query, "results": [], "message": "Index is empty. Please upload documents first."}
 
-    # 1. Embed the incoming search query
+    
     query_vector = model.encode([payload.query], convert_to_numpy=True).astype('float32')
 
-    # 2. Query FAISS for the nearest vectors
-    # k must not exceed the total number of indexed items
+    
     k = min(payload.top_k, index.ntotal)
     distances, indices = index.search(query_vector, k)
 
-    # 3. Compile the ranked results
+    
     results = []
     for score, idx in zip(distances[0], indices[0]):
         if idx == -1:
-            continue  # FAISS returns -1 if fewer items exist than top_k requested
+            continue  
         
         doc_data = document_registry.get(int(idx))
         if doc_data:
@@ -111,7 +105,7 @@ def search_documents(payload: SearchQuery):
                 "document_id": int(idx),
                 "text": doc_data["text"],
                 "metadata": doc_data["metadata"],
-                "score": float(score)  # Lower score = closer match in L2 distance
+                "score": float(score)  
             })
 
     return {
