@@ -7,4 +7,7 @@ faiss-cpu
 pydantic
 streamlit
 requests
+pypdf
+python-multipart
+
 
