@@ -38,10 +38,10 @@ def check_health():
 
 @app.post("/index-pdf", status_code=status.HTTP_201_CREATED)
 async def save_pdf_document(file: UploadFile = File(...)):
-    """Accepts a PDF file upload, extracts text page-by-page, and indexes it."""
+    
     global next_available_id
 
-    # Safety check: Is it actually a PDF?
+   
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a .pdf file.")
 
@@ -89,7 +89,7 @@ async def save_pdf_document(file: UploadFile = File(...)):
 
 @app.post("/search")
 def find_similar_pdf_pages(payload: SearchRequest):
-    """Searches through all stored PDF pages to find the most contextually relevant matches."""
+    
     
     if vector_database.ntotal == 0:
         return {
