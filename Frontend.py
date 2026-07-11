@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 if "backend_url" not in st.session_state:
-    st.session_state.backend_url = "http://127.0.0.1:8000"
+    st.session_state.backend_url = "https://sentimental-api-w3y9.onrender.com/"
 
 st.sidebar.title("⚙️ Configuration")
 st.session_state.backend_url = st.sidebar.text_input(
