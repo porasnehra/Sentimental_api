@@ -1,80 +1,110 @@
 import streamlit as st
 import requests
 
-st.set_page_config(page_title="Local Semantic Search", layout="centered")
-st.title("🔍 Semantic Document Search")
-
-# Define the backend URL (You will update this after deploying the backend)
-BACKEND_URL = st.sidebar.text_input(
-    "Backend API URL", 
-    value="https://sentimental-api-w3y9.onrender.com"  # Default for local testing
+st.set_page_config(
+    page_title="PDF Semantic Search Engine",
+    page_icon="🔍",
+    layout="wide"
 )
 
-tabs = st.tabs(["Search Documents", "Index Documents", "System Status"])
+if "backend_url" not in st.session_state:
+    st.session_state.backend_url = "http://127.0.0.1:8000"
 
-# 1. Indexing Tab
-with tabs[1]:
-    st.header("📄 Add Documents to Index")
-    doc_text = st.text_area("Paste document text here:", height=150)
-    doc_source = st.text_input("Source Metadata (e.g., wiki, pdf_doc):")
+st.sidebar.title("⚙️ Configuration")
+st.session_state.backend_url = st.sidebar.text_input(
+    "Backend API URL", 
+    value=st.session_state.backend_url
+).rstrip("/")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("📊 System Status")
+
+try:
+    status_response = requests.get(f"{st.session_state.backend_url}/status", timeout=5)
+    if status_response.status_code == 200:
+        status_data = status_response.json()
+        st.sidebar.success("Connected to Backend")
+        st.sidebar.metric("Indexed Pages", status_data.get("total_pdf_pages_in_memory", 0))
+    else:
+        st.sidebar.error("Backend returned an error status.")
+except Exception:
+    st.sidebar.warning("🔴 Unable to connect to backend service.")
+
+st.title("🔍 PDF Semantic Document Search")
+st.write("Upload PDF documents to extract their contents into a vector space, then search them using natural language queries.")
+
+upload_tab, search_tab = st.tabs(["📤 Upload & Index PDF", "🔎 Semantic Search"])
+
+with upload_tab:
+    st.header("Upload Document")
+    uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
     
-    if st.button("Submit to Index", type="primary"):
-        if doc_text:
-            payload = {
-                "documents": [
-                    {
-                        "text": doc_text,
-                        "metadata": {"source": doc_source}
-                    }
-                ]
-            }
-            try:
-                response = requests.post(f"{BACKEND_URL}/index", json=payload)
-                if response.status_code == 201:
-                    st.success("Document indexed successfully!")
-                    st.json(response.json())
-                else:
-                    st.error(f"Error: {response.text}")
-            except Exception as e:
-                st.error(f"Could not connect to backend: {e}")
-        else:
-            st.warning("Please enter text before submitting.")
+    if uploaded_file is not None:
+        if st.button("🚀 Process and Index Document", type="primary"):
+            with st.spinner("Reading PDF, generating embeddings, and updating FAISS index..."):
+                try:
+                    files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
+                    response = requests.post(
+                        f"{st.session_state.backend_url}/index-pdf", 
+                        files=files
+                    )
+                    
+                    if response.status_code == 201:
+                        result = response.json()
+                        st.success(result.get("message", "PDF successfully indexed!"))
+                        st.json(result.get("details", []))
+                    else:
+                        st.error(f"Failed to index: {response.json().get('detail', 'Unknown error')}")
+                except Exception as e:
+                    st.error(f"An error occurred while connecting to the backend: {str(e)}")
 
-# 2. Search Tab
-with tabs[0]:
-    st.header("🔎 Find Relevant Context")
-    query = st.text_input("Enter your natural language query:")
-    top_k = st.slider("Number of results (Top K)", min_value=1, max_value=5, value=3)
+with search_tab:
+    st.header("Search Knowledge Base")
     
-    if st.button("Search", type="primary"):
-        if query:
-            payload = {"query": query, "top_k": top_k}
-            try:
-                response = requests.post(f"{BACKEND_URL}/search", json=payload)
-                if response.status_code == 200:
-                    results = response.json().get("results", [])
-                    if not results:
-                        st.info("No documents matched or index is empty.")
-                    for res in results:
-                        with st.expander(f"Document ID: {res['document_id']} (Distance Score: {res['score']:.4f})"):
-                            st.write(res["text"])
-                            st.caption(f"Metadata: {res['metadata']}")
-                else:
-                    st.error(f"Error: {response.text}")
-            except Exception as e:
-                st.error(f"Could not connect to backend: {e}")
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        search_query = st.text_input("Enter your natural language query", placeholder="e.g., What are the terms of the agreement?")
+    with col2:
+        max_results = st.number_input("Max matches", min_value=1, max_value=20, value=3)
+        
+    if st.button("🔍 Search", type="primary"):
+        if not search_query.strip():
+            st.warning("Please enter a valid search query.")
         else:
-            st.warning("Please enter a query.")
-
-# 3. Status Tab
-with tabs[2]:
-    st.header("⚙️ Server Status")
-    if st.button("Check Status"):
-        try:
-            response = requests.get(f"{BACKEND_URL}/status")
-            if response.status_code == 200:
-                st.json(response.json())
-            else:
-                st.error("Failed to fetch status.")
-        except Exception as e:
-            st.error(f"Could not connect to backend: {e}")
+            with st.spinner("Searching through index vectors..."):
+                try:
+                    payload = {"query": search_query, "max_results": max_results}
+                    response = requests.post(
+                        f"{st.session_state.backend_url}/search", 
+                        json=payload
+                    )
+                    
+                    if response.status_code == 200:
+                        search_data = response.json()
+                        matches = search_data.get("results", [])
+                        
+                        st.subheader(f"Matches Found: {search_data.get('matches_found', 0)}")
+                        
+                        if not matches:
+                            st.info("No matching content found for your query.")
+                            
+                        for idx, match in enumerate(matches):
+                            with st.container():
+                                col_meta, col_score = st.columns([3, 1])
+                                with col_meta:
+                                    st.markdown(f"#### 📄 {match['source_file']} (Page {match['page_number']})")
+                                with col_score:
+                                    st.info(f"Distance Score: {match['match_score']:.4f}")
+                                
+                                st.text_area(
+                                    f"Extracted Match Fragment #{idx+1}", 
+                                    value=match['matched_text'], 
+                                    height=150, 
+                                    disabled=True
+                                )
+                                st.markdown("---")
+                    else:
+                        st.error("The search service returned an unexpected error response.")
+                except Exception as e:
+                    st.error(f"Could not reach search backend: {str(e)}")
+                    
