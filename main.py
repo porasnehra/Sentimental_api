@@ -19,7 +19,6 @@ vector_size = ai_model.get_sentence_embedding_dimension()
 
 vector_database = faiss.IndexFlatL2(vector_size)
 
-# Maps a vector ID back to the exact PDF name, page number, and text content
 text_storage: Dict[int, Dict[str, any]] = {}
 next_available_id = 0
 
