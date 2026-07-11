@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 import faiss
 from typing import List, Dict
-import pypdf  # Library to read PDF files
+import pypdf  
 
 
 app = FastAPI(
